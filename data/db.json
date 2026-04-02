@@ -1,0 +1,29 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "openId": "local-dev-user",
+      "name": "Local User",
+      "email": null,
+      "loginMethod": "local-dev",
+      "role": "user",
+      "createdAt": "2026-03-07T18:40:05.835Z",
+      "updatedAt": "2026-03-07T18:41:58.807Z",
+      "lastSignedIn": "2026-03-07T18:41:58.803Z"
+    }
+  ],
+  "files": [
+    {
+      "userId": 1,
+      "originalName": "Screenshot 2026-03-03 180246.png",
+      "fileName": "pveh_DphqrQZYTLpuH64H-Screenshot 2026-03-03 180246.png",
+      "fileType": "image/png",
+      "fileSize": 15489,
+      "filePath": "pveh_DphqrQZYTLpuH64H-Screenshot 2026-03-03 180246.png",
+      "uploadedAt": "2026-03-07T18:41:58.768Z",
+      "id": 1,
+      "createdAt": "2026-03-07T18:41:58.769Z",
+      "updatedAt": "2026-03-07T18:41:58.769Z"
+    }
+  ]
+}
