@@ -16,24 +16,68 @@ Ek full-stack file management application jisme users apni files (images, docume
 
 ## Tech Stack
 
-| Layer           | Technology                 |
-| --------------- | -------------------------- |
-| Frontend        | React 19 + Vite            |
-| Styling         | Tailwind CSS 4 + shadcn/ui |
-| Backend         | Express.js + tRPC          |
-| Database        | Supabase (PostgreSQL)      |
-| File Storage    | Supabase Storage           |
-| Auth            | JWT (jose)                 |
-| ORM             | Drizzle ORM (types)        |
-| Package Manager | pnpm                       |
+| Layer           | Technology                     |
+| --------------- | ------------------------------ |
+| Frontend        | React 19 + Vite                |
+| Styling         | Tailwind CSS 4 + shadcn/ui     |
+| Backend         | Express.js + tRPC              |
+| Database        | PostgreSQL (Supabase / Docker) |
+| File Storage    | Supabase Storage / MinIO (S3)  |
+| Auth            | JWT (jose)                     |
+| ORM             | Drizzle ORM (types)            |
+| Package Manager | pnpm                           |
+| Container       | Docker + Docker Compose        |
 
-## Prerequisites
+---
+
+## Option 1: Docker (Recommended - Koi bhi chala sakta hai)
+
+Sirf Docker install hona chahiye. Baaki sab apne aap setup hota hai.
+
+### Run karo
+
+```bash
+docker compose up --build
+```
+
+App `http://localhost:3000` pe chalega. Pehli baar build hone mein 2-3 minute lagenge.
+
+### Services
+
+| Container    | Port                      | Kaam             |
+| ------------ | ------------------------- | ---------------- |
+| **app**      | `localhost:3000`          | Main application |
+| **postgres** | `localhost:5432`          | Database         |
+| **minio**    | `localhost:9000` / `9001` | File storage     |
+
+### MinIO Console (File storage browse karna ho)
+
+- URL: `http://localhost:9001`
+- User: `minioadmin`
+- Password: `minioadmin`
+
+### Stop karo
+
+```bash
+docker compose down          # containers band karo (data rehta hai)
+docker compose down -v       # sab kuch delete karo (data bhi)
+```
+
+### Rebuild karo (code change hone ke baad)
+
+```bash
+docker compose up --build
+```
+
+---
+
+## Option 2: Manual Setup (Supabase cloud ke saath)
+
+### Prerequisites
 
 - **Node.js** 20+
 - **pnpm** 10+
 - **Supabase** account ([supabase.com](https://supabase.com))
-
-## Setup
 
 ### 1. Clone the repository
 
@@ -76,6 +120,8 @@ pnpm dev
 
 App `http://localhost:3000` pe chalega.
 
+---
+
 ## Available Scripts
 
 | Command       | Description                   |
@@ -103,18 +149,23 @@ file-organizer-manager/
 │   └── index.html
 ├── server/                 # Express backend
 │   ├── _core/              # Core utilities (auth, trpc, vite)
-│   ├── db.ts               # Supabase database operations
+│   ├── db.ts               # Database operations (Supabase / PostgreSQL + S3)
 │   └── routers.ts          # tRPC routes
 ├── drizzle/                # Database schema (types)
 │   └── schema.ts
 ├── shared/                 # Shared code (client + server)
-├── supabase-migration.sql  # Database migration SQL
+├── Dockerfile              # Docker image build
+├── docker-compose.yml      # Docker services (PostgreSQL + MinIO + App)
+├── init.sql                # Database auto-setup for Docker
+├── supabase-migration.sql  # Supabase cloud migration
 ├── vercel.json             # Vercel deployment config
 ├── .env                    # Environment variables
 └── package.json
 ```
 
-## Deployment (Vercel)
+## Deployment
+
+### Vercel (Supabase cloud ke saath)
 
 1. GitHub pe push karo
 2. [vercel.com](https://vercel.com) pe project import karo
@@ -125,6 +176,16 @@ file-organizer-manager/
    - `JWT_SECRET`
    - `VITE_APP_ID`
 4. **Deploy** click karo
+
+### Docker (Apne server pe)
+
+```bash
+git clone <your-repo-url>
+cd file-organizer-manager
+docker compose up -d --build
+```
+
+App background mein `localhost:3000` pe chalega.
 
 ## Database Tables
 
@@ -145,18 +206,18 @@ file-organizer-manager/
 
 ### files
 
-| Column       | Type         | Description           |
-| ------------ | ------------ | --------------------- |
-| id           | SERIAL       | Primary key           |
-| userId       | INTEGER      | Foreign key to users  |
-| originalName | VARCHAR(255) | Original file name    |
-| fileName     | VARCHAR(255) | Stored file name      |
-| fileType     | VARCHAR(100) | MIME type             |
-| fileSize     | INTEGER      | File size in bytes    |
-| filePath     | VARCHAR(512) | Supabase Storage path |
-| uploadedAt   | TIMESTAMPTZ  | Upload timestamp      |
-| createdAt    | TIMESTAMPTZ  | Created timestamp     |
-| updatedAt    | TIMESTAMPTZ  | Updated timestamp     |
+| Column       | Type         | Description          |
+| ------------ | ------------ | -------------------- |
+| id           | SERIAL       | Primary key          |
+| userId       | INTEGER      | Foreign key to users |
+| originalName | VARCHAR(255) | Original file name   |
+| fileName     | VARCHAR(255) | Stored file name     |
+| fileType     | VARCHAR(100) | MIME type            |
+| fileSize     | INTEGER      | File size in bytes   |
+| filePath     | VARCHAR(512) | Storage path         |
+| uploadedAt   | TIMESTAMPTZ  | Upload timestamp     |
+| createdAt    | TIMESTAMPTZ  | Created timestamp    |
+| updatedAt    | TIMESTAMPTZ  | Updated timestamp    |
 
 ## License
 

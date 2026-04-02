@@ -1,0 +1,9 @@
+node_modules
+dist
+uploads
+.manus-logs
+.git
+*.md
+!README.md
+.env
+.env.local
