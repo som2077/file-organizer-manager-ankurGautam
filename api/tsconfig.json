@@ -1,9 +1,0 @@
-{
-  "extends": "../tsconfig.json",
-  "compilerOptions": {
-    "noEmit": false,
-    "outDir": "../.vercel/output",
-    "rootDir": "."
-  },
-  "include": ["./**/*", "../server/**/*", "../shared/**/*", "../drizzle/**/*"]
-}

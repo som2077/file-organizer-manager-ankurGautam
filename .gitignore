@@ -6,7 +6,7 @@
 dist/
 build/
 *.dist
-api/_app.*
+api/_bundle.mjs
 
 # Environment variables
 .env
