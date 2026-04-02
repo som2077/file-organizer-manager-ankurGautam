@@ -5,10 +5,21 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { sdk } from "./_core/sdk";
 import { verifyPassword } from "./_core/password";
 import { z } from "zod";
-import { createFile, deleteFile, filterFilesByType, getFileById, getFilesByUserId, searchFiles, findUserByEmail, createUserWithPassword, upsertUser } from "./db";
+import {
+  createFile,
+  deleteFile,
+  filterFilesByType,
+  getFileById,
+  getFilesByUserId,
+  searchFiles,
+  findUserByEmail,
+  createUserWithPassword,
+  upsertUser,
+  uploadToStorage,
+  downloadFromStorage,
+  deleteFromStorage,
+} from "./db";
 import { TRPCError } from "@trpc/server";
-import fs from "fs/promises";
-import path from "path";
 import { nanoid } from "nanoid";
 
 export const appRouter = router({
@@ -23,11 +34,13 @@ export const appRouter = router({
       } as const;
     }),
     signup: publicProcedure
-      .input(z.object({
-        name: z.string().min(1, "Name is required"),
-        email: z.string().email("Invalid email address"),
-        password: z.string().min(6, "Password must be at least 6 characters"),
-      }))
+      .input(
+        z.object({
+          name: z.string().min(1, "Name is required"),
+          email: z.string().email("Invalid email address"),
+          password: z.string().min(6, "Password must be at least 6 characters"),
+        })
+      )
       .mutation(async ({ ctx, input }) => {
         try {
           const existingUser = await findUserByEmail(input.email);
@@ -69,10 +82,12 @@ export const appRouter = router({
         }
       }),
     login: publicProcedure
-      .input(z.object({
-        email: z.string().email("Invalid email address"),
-        password: z.string().min(1, "Password is required"),
-      }))
+      .input(
+        z.object({
+          email: z.string().email("Invalid email address"),
+          password: z.string().min(1, "Password is required"),
+        })
+      )
       .mutation(async ({ ctx, input }) => {
         try {
           const user = await findUserByEmail(input.email);
@@ -123,38 +138,35 @@ export const appRouter = router({
   }),
 
   files: router({
-    list: protectedProcedure.query(({ ctx }) =>
-      getFilesByUserId(ctx.user.id)
-    ),
-    
+    list: protectedProcedure.query(({ ctx }) => getFilesByUserId(ctx.user.id)),
+
     upload: protectedProcedure
-      .input(z.object({
-        fileName: z.string(),
-        fileType: z.string(),
-        fileSize: z.number(),
-        fileData: z.string(),
-      }))
+      .input(
+        z.object({
+          fileName: z.string(),
+          fileType: z.string(),
+          fileSize: z.number(),
+          fileData: z.string(),
+        })
+      )
       .mutation(async ({ ctx, input }) => {
         try {
-          const uploadsDir = path.join(process.cwd(), "uploads");
-          await fs.mkdir(uploadsDir, { recursive: true });
-          
           const uniqueFileName = `${nanoid()}-${input.fileName}`;
-          const filePath = path.join(uploadsDir, uniqueFileName);
-          
+          const storagePath = `user-${ctx.user.id}/${uniqueFileName}`;
           const buffer = Buffer.from(input.fileData, "base64");
-          await fs.writeFile(filePath, buffer);
-          
+
+          await uploadToStorage(storagePath, buffer, input.fileType);
+
           const file = await createFile({
             userId: ctx.user.id,
             originalName: input.fileName,
             fileName: uniqueFileName,
             fileType: input.fileType,
             fileSize: input.fileSize,
-            filePath: uniqueFileName,
+            filePath: storagePath,
             uploadedAt: new Date(),
           });
-          
+
           return { success: true, file };
         } catch (error) {
           console.error("File upload error:", error);
@@ -164,7 +176,7 @@ export const appRouter = router({
           });
         }
       }),
-    
+
     download: protectedProcedure
       .input(z.object({ fileId: z.number() }))
       .query(async ({ ctx, input }) => {
@@ -176,13 +188,12 @@ export const appRouter = router({
               message: "File not found",
             });
           }
-          
-          const filePath = path.join(process.cwd(), "uploads", file.filePath);
-          const fileData = await fs.readFile(filePath);
-          
+
+          const fileBuffer = await downloadFromStorage(file.filePath);
+
           return {
             fileName: file.originalName,
-            fileData: fileData.toString("base64"),
+            fileData: fileBuffer.toString("base64"),
             fileType: file.fileType,
           };
         } catch (error) {
@@ -193,7 +204,7 @@ export const appRouter = router({
           });
         }
       }),
-    
+
     delete: protectedProcedure
       .input(z.object({ fileId: z.number() }))
       .mutation(async ({ ctx, input }) => {
@@ -205,16 +216,15 @@ export const appRouter = router({
               message: "File not found",
             });
           }
-          
-          const filePath = path.join(process.cwd(), "uploads", file.filePath);
+
           try {
-            await fs.unlink(filePath);
+            await deleteFromStorage(file.filePath);
           } catch (err) {
-            console.warn("Failed to delete file from disk:", err);
+            console.warn("Failed to delete file from storage:", err);
           }
-          
+
           await deleteFile(input.fileId, ctx.user.id);
-          
+
           return { success: true };
         } catch (error) {
           console.error("File delete error:", error);
@@ -224,13 +234,11 @@ export const appRouter = router({
           });
         }
       }),
-    
+
     search: protectedProcedure
       .input(z.object({ query: z.string() }))
-      .query(({ ctx, input }) =>
-        searchFiles(ctx.user.id, input.query)
-      ),
-    
+      .query(({ ctx, input }) => searchFiles(ctx.user.id, input.query)),
+
     filterByType: protectedProcedure
       .input(z.object({ fileType: z.string() }))
       .query(({ ctx, input }) =>
